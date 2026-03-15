@@ -1,9 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <meta charset="UTF-8">
 <title>Mesh Node Collector</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <style>
+
 body{
 font-family:Arial;
 background:#f4f7fb;
@@ -31,6 +37,13 @@ cursor:pointer;
 button:hover{
 background:#1366d6;
 }
+
+#map{
+height:400px;
+margin-top:30px;
+border-radius:10px;
+}
+
 </style>
 </head>
 
@@ -39,54 +52,172 @@ background:#1366d6;
 <h1>Mesh Node Collector</h1>
 <p>Discover mesh nodes like Pokémon cards.</p>
 
+<h2>Score: <span id="score">0</span></h2>
+
 <div id="nodes"></div>
 
 <h2>Your Collection</h2>
 <div id="collection"></div>
 
+<h2>Mesh Map</h2>
+<div id="map"></div>
+
 <script>
 
 const nodes=[
-{name:"Hilltop Relay",rarity:"Rare"},
-{name:"Town Link",rarity:"Common"},
-{name:"River Watch",rarity:"Epic"},
-{name:"Workshop Beacon",rarity:"Uncommon"},
-{name:"Cafe Mesh",rarity:"Legendary"}
+
+{
+name:"Hilltop Relay",
+rarity:"Rare",
+points:50,
+hardware:"Heltec V3",
+antenna:"5dBi",
+owner:"MeshKildare",
+lat:53.35,
+lng:-6.26
+},
+
+{
+name:"Town Link",
+rarity:"Common",
+points:10,
+hardware:"T-Beam",
+antenna:"3dBi",
+owner:"NaasNode",
+lat:53.22,
+lng:-6.66
+},
+
+{
+name:"River Watch",
+rarity:"Epic",
+points:100,
+hardware:"RAK WisBlock",
+antenna:"8dBi",
+owner:"RiverMesh",
+lat:53.19,
+lng:-6.12
+},
+
+{
+name:"Workshop Beacon",
+rarity:"Uncommon",
+points:25,
+hardware:"T-Echo",
+antenna:"2dBi",
+owner:"MakerLab",
+lat:53.40,
+lng:-6.30
+},
+
+{
+name:"Cafe Mesh",
+rarity:"Legendary",
+points:300,
+hardware:"Station G2",
+antenna:"10dBi",
+owner:"CafeHost",
+lat:53.34,
+lng:-6.24
+}
+
 ]
 
 let collection=JSON.parse(localStorage.getItem("meshCollection"))||[]
+
+let score=localStorage.getItem("meshScore")||0
+
+document.getElementById("score").innerText=score
 
 function render(){
 
 let nodesHTML=""
 
 nodes.forEach((node,i)=>{
+
 nodesHTML+=`
+
 <div class="card">
+
 <h3>${node.name}</h3>
+
 <p>${node.rarity}</p>
+
+<p>${node.hardware}</p>
+
 <button onclick="collect(${i})">Collect</button>
-</div>`
+
+</div>
+
+`
+
 })
 
 document.getElementById("nodes").innerHTML=nodesHTML
 
+
 let colHTML=""
 
 collection.forEach(node=>{
-colHTML+=`<div class="card">${node.name}</div>`
+
+colHTML+=`<div class="card">
+
+<h3>${node.name}</h3>
+
+<p>${node.rarity}</p>
+
+</div>`
+
 })
 
 document.getElementById("collection").innerHTML=colHTML
+
 }
 
 function collect(i){
+
 collection.push(nodes[i])
+
+score=parseInt(score)+nodes[i].points
+
 localStorage.setItem("meshCollection",JSON.stringify(collection))
+
+localStorage.setItem("meshScore",score)
+
+document.getElementById("score").innerText=score
+
 render()
+
 }
 
 render()
+
+
+const map=L.map('map').setView([53.34,-6.26],8)
+
+L.tileLayer(
+'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+maxZoom:19
+}
+).addTo(map)
+
+
+nodes.forEach(node=>{
+
+L.marker([node.lat,node.lng])
+.addTo(map)
+.bindPopup(
+
+"<b>"+node.name+"</b><br>"+
+"Rarity: "+node.rarity+"<br>"+
+"Hardware: "+node.hardware+"<br>"+
+"Antenna: "+node.antenna+"<br>"+
+"Owner: "+node.owner
+
+)
+
+})
 
 </script>
 
