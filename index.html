@@ -1,305 +1,394 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <title>Mesh Node Collector</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<meta charset="UTF-8">
-<title>Mesh Node Collector</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<style>
-
-body{
-font-family:Arial;
-background:#f4f7fb;
-text-align:center;
-padding:40px;
-}
-
-.card{
-background:white;
-padding:20px;
-margin:15px;
-border-radius:10px;
-box-shadow:0 3px 10px rgba(0,0,0,0.1);
-}
-
-button{
-padding:10px 15px;
-border:none;
-background:#2f80ed;
-color:white;
-border-radius:6px;
-cursor:pointer;
-}
-
-button:hover{
-background:#1366d6;
-}
-
-#map{
-height:400px;
-margin-top:30px;
-border-radius:10px;
-}
-
-.locked{
-opacity:0.4;
-}
-
-</style>
+  <style>
+    body{
+      font-family:Arial,sans-serif;
+      background:#f4f7fb;
+      text-align:center;
+      padding:24px;
+      margin:0;
+    }
+    .wrap{
+      max-width:760px;
+      margin:0 auto;
+    }
+    .card{
+      background:white;
+      padding:20px;
+      margin:15px 0;
+      border-radius:12px;
+      box-shadow:0 3px 10px rgba(0,0,0,0.1);
+    }
+    button{
+      padding:10px 15px;
+      border:none;
+      background:#2f80ed;
+      color:white;
+      border-radius:6px;
+      cursor:pointer;
+      margin:4px;
+      font-size:14px;
+    }
+    button:hover{ background:#1366d6; }
+    button.secondary{
+      background:#6b7280;
+    }
+    button.danger{
+      background:#d64545;
+    }
+    button:disabled{
+      background:#b8c7e6;
+      cursor:not-allowed;
+    }
+    #map{
+      height:420px;
+      margin-top:20px;
+      border-radius:12px;
+      overflow:hidden;
+    }
+    .locked{
+      opacity:0.45;
+    }
+    .small{
+      font-size:13px;
+      color:#666;
+    }
+    .status{
+      font-size:14px;
+      margin:10px 0 20px;
+      color:#444;
+    }
+    .row{
+      display:flex;
+      justify-content:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+  </style>
 </head>
-
 <body>
-
-<h1>Mesh Node Collector</h1>
-<p>Discover mesh nodes like Pokémon cards.</p>
-
-<h2>Score: <span id="score">0</span></h2>
-
-<button onclick="getLocation()">Scan for Nearby Nodes</button>
-
-<div id="nodes"></div>
-
-<h2>Your Collection</h2>
-<div id="collection"></div>
-
-<h2>Mesh Map</h2>
-<div id="map"></div>
-
-<script>
-
-const nodes=[
-
-{
-name:"Hilltop Relay",
-rarity:"Rare",
-points:50,
-hardware:"Heltec V3",
-antenna:"5dBi",
-owner:"MeshKildare",
-lat:53.35,
-lng:-6.26
-},
-
-{
-name:"Town Link",
-rarity:"Common",
-points:10,
-hardware:"T-Beam",
-antenna:"3dBi",
-owner:"NaasNode",
-lat:53.22,
-lng:-6.66
-},
-
-{
-name:"River Watch",
-rarity:"Epic",
-points:100,
-hardware:"RAK WisBlock",
-antenna:"8dBi",
-owner:"RiverMesh",
-lat:53.19,
-lng:-6.12
-},
-
-{
-name:"Workshop Beacon",
-rarity:"Uncommon",
-points:25,
-hardware:"T-Echo",
-antenna:"2dBi",
-owner:"MakerLab",
-lat:53.40,
-lng:-6.30
-},
-
-{
-name:"Cafe Mesh",
-rarity:"Legendary",
-points:300,
-hardware:"Station G2",
-antenna:"10dBi",
-owner:"CafeHost",
-lat:53.34,
-lng:-6.24
-}
-
-]
-
-let collection=JSON.parse(localStorage.getItem("meshCollection"))||[]
-let score=parseInt(localStorage.getItem("meshScore")||0)
-
-let unlockedNodes=[]
-
-document.getElementById("score").innerText=score
-
-function render(){
-
-let nodesHTML=""
-
-nodes.forEach((node,i)=>{
-
-const unlocked = unlockedNodes.includes(node.name)
-
-nodesHTML+=`
-
-<div class="card ${unlocked ? "" : "locked"}">
-
-<h3>${node.name}</h3>
-
-<p>${node.rarity}</p>
-
-<p>${node.hardware}</p>
-
-${unlocked ? `<button onclick="collect(${i})">Collect</button>` : `<p>🔒 Move closer to unlock</p>`}
-
-</div>
-
-`
-
-})
-
-document.getElementById("nodes").innerHTML=nodesHTML
-
-
-let colHTML=""
-
-collection.forEach(node=>{
-
-colHTML+=`
-
-<div class="card">
-
-<h3>${node.name}</h3>
-
-<p>${node.rarity}</p>
-
-</div>
-
-`
-
-})
-
-document.getElementById("collection").innerHTML=colHTML
-
-}
-
-function collect(i){
-
-const node=nodes[i]
-
-if(collection.find(n=>n.name===node.name)){
-
-alert("You already collected this node")
-
-return
-
-}
-
-collection.push(node)
-
-score+=node.points
-
-localStorage.setItem("meshCollection",JSON.stringify(collection))
-localStorage.setItem("meshScore",score)
-
-document.getElementById("score").innerText=score
-
-render()
-
-}
-
-function getLocation(){
-
-if(!navigator.geolocation){
-
-alert("GPS not supported")
-
-return
-
-}
-
-navigator.geolocation.getCurrentPosition(checkNodes)
-
-}
-
-function checkNodes(position){
-
-const userLat=position.coords.latitude
-const userLng=position.coords.longitude
-
-nodes.forEach(node=>{
-
-const distance=getDistance(userLat,userLng,node.lat,node.lng)
-
-if(distance<500){
-
-if(!unlockedNodes.includes(node.name)){
-
-unlockedNodes.push(node.name)
-
-}
-
-}
-
-})
-
-render()
-
-}
-
-function getDistance(lat1,lon1,lat2,lon2){
-
-const R=6371000
-
-const dLat=(lat2-lat1)*Math.PI/180
-const dLon=(lon2-lon1)*Math.PI/180
-
-const a=
-Math.sin(dLat/2)*Math.sin(dLat/2)+
-Math.cos(lat1*Math.PI/180)*
-Math.cos(lat2*Math.PI/180)*
-Math.sin(dLon/2)*Math.sin(dLon/2)
-
-const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))
-
-return R*c
-
-}
-
-render()
-
-
-const map=L.map('map').setView([53.34,-6.26],8)
-
-L.tileLayer(
-'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-{
-maxZoom:19
-}
-).addTo(map)
-
-
-nodes.forEach(node=>{
-
-L.marker([node.lat,node.lng])
-.addTo(map)
-.bindPopup(
-
-"<b>"+node.name+"</b><br>"+
-"Rarity: "+node.rarity+"<br>"+
-"Hardware: "+node.hardware+"<br>"+
-"Antenna: "+node.antenna+"<br>"+
-"Owner: "+node.owner
-
-)
-
-})
-
-</script>
-
+  <div class="wrap">
+    <h1>Mesh Node Collector</h1>
+    <p>Discover mesh nodes like Pokémon cards.</p>
+
+    <h2>Score: <span id="score">0</span></h2>
+
+    <div class="row">
+      <button onclick="scanGPS()">Scan for Nearby Nodes</button>
+      <button class="secondary" onclick="simulateMeshtasticDiscoveries()">Simulate Meshtastic Unlock</button>
+      <button class="danger" onclick="clearCollection()">Clear Collection</button>
+    </div>
+
+    <div class="status" id="status">Ready.</div>
+
+    <div id="nodes"></div>
+
+    <h2>Your Collection</h2>
+    <div id="collection"></div>
+
+    <h2>Mesh Map</h2>
+    <div id="map"></div>
+  </div>
+
+  <script>
+    const nodes = [
+      {
+        id:"hilltop-relay",
+        name:"Hilltop Relay",
+        rarity:"Rare",
+        points:50,
+        hardware:"Heltec V3",
+        antenna:"5dBi",
+        owner:"MeshKildare",
+        lat:53.35,
+        lng:-6.26
+      },
+      {
+        id:"town-link",
+        name:"Town Link",
+        rarity:"Common",
+        points:10,
+        hardware:"T-Beam",
+        antenna:"3dBi",
+        owner:"NaasNode",
+        lat:53.22,
+        lng:-6.66
+      },
+      {
+        id:"river-watch",
+        name:"River Watch",
+        rarity:"Epic",
+        points:100,
+        hardware:"RAK WisBlock",
+        antenna:"8dBi",
+        owner:"RiverMesh",
+        lat:53.19,
+        lng:-6.12
+      },
+      {
+        id:"workshop-beacon",
+        name:"Workshop Beacon",
+        rarity:"Uncommon",
+        points:25,
+        hardware:"T-Echo",
+        antenna:"2dBi",
+        owner:"MakerLab",
+        lat:53.40,
+        lng:-6.30
+      },
+      {
+        id:"cafe-mesh",
+        name:"Cafe Mesh",
+        rarity:"Legendary",
+        points:300,
+        hardware:"Station G2",
+        antenna:"10dBi",
+        owner:"CafeHost",
+        lat:53.34,
+        lng:-6.24
+      }
+    ];
+
+    let collection = JSON.parse(localStorage.getItem("meshCollection") || "[]");
+    let unlockedNodes = JSON.parse(localStorage.getItem("meshUnlockedNodes") || "[]");
+    let score = parseInt(localStorage.getItem("meshScore") || "0", 10);
+    let userMarker = null;
+    let accuracyCircle = null;
+
+    const scoreEl = document.getElementById("score");
+    const statusEl = document.getElementById("status");
+
+    scoreEl.innerText = score;
+
+    const map = L.map('map').setView([53.34,-6.26],8);
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    const nodeMarkers = {};
+
+    nodes.forEach(node => {
+      const marker = L.marker([node.lat, node.lng]).addTo(map).bindPopup(
+        "<b>" + node.name + "</b><br>" +
+        "Rarity: " + node.rarity + "<br>" +
+        "Hardware: " + node.hardware + "<br>" +
+        "Antenna: " + node.antenna + "<br>" +
+        "Owner: " + node.owner
+      );
+      nodeMarkers[node.id] = marker;
+    });
+
+    function saveState(){
+      localStorage.setItem("meshCollection", JSON.stringify(collection));
+      localStorage.setItem("meshUnlockedNodes", JSON.stringify(unlockedNodes));
+      localStorage.setItem("meshScore", String(score));
+    }
+
+    function isCollected(nodeId){
+      return collection.some(n => n.id === nodeId);
+    }
+
+    function isUnlocked(nodeId){
+      return unlockedNodes.includes(nodeId);
+    }
+
+    function render(){
+      scoreEl.innerText = score;
+
+      let nodesHTML = "";
+      nodes.forEach((node, i) => {
+        const unlocked = isUnlocked(node.id);
+        const collected = isCollected(node.id);
+
+        nodesHTML += `
+          <div class="card ${unlocked ? "" : "locked"}">
+            <h3>${node.name}</h3>
+            <p>${node.rarity}</p>
+            <p>${node.hardware}</p>
+            <p class="small">${node.owner}</p>
+            ${
+              unlocked
+                ? `<button onclick="collect(${i})" ${collected ? "disabled" : ""}>${collected ? "Collected" : "Collect"}</button>`
+                : `<p>🔒 Move closer or hear this node on Meshtastic to unlock</p>`
+            }
+          </div>
+        `;
+      });
+      document.getElementById("nodes").innerHTML = nodesHTML;
+
+      let colHTML = "";
+      if (collection.length === 0) {
+        colHTML = `<div class="card">No nodes collected yet.</div>`;
+      } else {
+        collection.forEach(node => {
+          colHTML += `
+            <div class="card">
+              <h3>${node.name}</h3>
+              <p>${node.rarity}</p>
+              <p class="small">${node.hardware}</p>
+              <button class="danger" onclick="removeNode('${node.id}')">Delete from Collection</button>
+            </div>
+          `;
+        });
+      }
+      document.getElementById("collection").innerHTML = colHTML;
+    }
+
+    function collect(i){
+      const node = nodes[i];
+
+      if (!isUnlocked(node.id)) {
+        alert("This node is not unlocked yet.");
+        return;
+      }
+
+      if (isCollected(node.id)) {
+        alert("You already collected this node.");
+        return;
+      }
+
+      collection.push(node);
+      score += node.points;
+      saveState();
+      render();
+    }
+
+    function removeNode(nodeId){
+      const node = collection.find(n => n.id === nodeId);
+      if (!node) return;
+
+      collection = collection.filter(n => n.id !== nodeId);
+      score = Math.max(0, score - node.points);
+      saveState();
+      render();
+    }
+
+    function clearCollection(){
+      if (!confirm("Clear collection, score, and unlocked demo nodes?")) return;
+      collection = [];
+      unlockedNodes = [];
+      score = 0;
+      saveState();
+      render();
+      statusEl.innerText = "Collection cleared.";
+    }
+
+    function unlockNodeById(nodeId, reason){
+      if (!isUnlocked(nodeId)) {
+        unlockedNodes.push(nodeId);
+        saveState();
+        const node = nodes.find(n => n.id === nodeId);
+        if (node) {
+          statusEl.innerText = `Unlocked ${node.name} via ${reason}.`;
+        }
+      }
+      render();
+    }
+
+    function scanGPS(){
+      if (!navigator.geolocation) {
+        alert("GPS not supported on this device/browser.");
+        return;
+      }
+
+      statusEl.innerText = "Getting your location...";
+
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const userLat = position.coords.latitude;
+          const userLng = position.coords.longitude;
+          const accuracy = position.coords.accuracy || 0;
+
+          updateUserOnMap(userLat, userLng, accuracy);
+          checkNearbyNodes(userLat, userLng);
+
+          statusEl.innerText = `Location updated. Accuracy: ${Math.round(accuracy)} m`;
+        },
+        error => {
+          statusEl.innerText = "Location failed. Make sure GPS permission is allowed.";
+          alert("Could not get location. Check Chrome site permissions and phone location settings.");
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+
+    function updateUserOnMap(lat, lng, accuracy){
+      if (userMarker) {
+        map.removeLayer(userMarker);
+      }
+      if (accuracyCircle) {
+        map.removeLayer(accuracyCircle);
+      }
+
+      userMarker = L.marker([lat, lng]).addTo(map).bindPopup("You are here");
+      accuracyCircle = L.circle([lat, lng], {
+        radius: accuracy,
+        color: "#2f80ed",
+        fillColor: "#2f80ed",
+        fillOpacity: 0.15
+      }).addTo(map);
+
+      map.setView([lat, lng], 13);
+    }
+
+    function checkNearbyNodes(userLat, userLng){
+      let anyUnlocked = false;
+
+      nodes.forEach(node => {
+        const distance = getDistanceMeters(userLat, userLng, node.lat, node.lng);
+        if (distance < 500) {
+          if (!isUnlocked(node.id)) {
+            unlockedNodes.push(node.id);
+            anyUnlocked = true;
+          }
+        }
+      });
+
+      saveState();
+      render();
+
+      if (anyUnlocked) {
+        statusEl.innerText = "Nearby node(s) unlocked by GPS.";
+      } else {
+        statusEl.innerText = "No new nearby nodes within 500 m.";
+      }
+    }
+
+    function getDistanceMeters(lat1, lon1, lat2, lon2){
+      const R = 6371000;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+
+      const a =
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) *
+        Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    function simulateMeshtasticDiscoveries(){
+      // Placeholder until real BLE integration is added
+      unlockNodeById("town-link", "simulated Meshtastic");
+      unlockNodeById("workshop-beacon", "simulated Meshtastic");
+    }
+
+    render();
+  </script>
 </body>
 </html>
