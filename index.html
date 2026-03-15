@@ -44,6 +44,10 @@ margin-top:30px;
 border-radius:10px;
 }
 
+.locked{
+opacity:0.4;
+}
+
 </style>
 </head>
 
@@ -53,6 +57,8 @@ border-radius:10px;
 <p>Discover mesh nodes like Pokémon cards.</p>
 
 <h2>Score: <span id="score">0</span></h2>
+
+<button onclick="getLocation()">Scan for Nearby Nodes</button>
 
 <div id="nodes"></div>
 
@@ -124,8 +130,9 @@ lng:-6.24
 ]
 
 let collection=JSON.parse(localStorage.getItem("meshCollection"))||[]
+let score=parseInt(localStorage.getItem("meshScore")||0)
 
-let score=localStorage.getItem("meshScore")||0
+let unlockedNodes=[]
 
 document.getElementById("score").innerText=score
 
@@ -135,9 +142,11 @@ let nodesHTML=""
 
 nodes.forEach((node,i)=>{
 
+const unlocked = unlockedNodes.includes(node.name)
+
 nodesHTML+=`
 
-<div class="card">
+<div class="card ${unlocked ? "" : "locked"}">
 
 <h3>${node.name}</h3>
 
@@ -145,7 +154,7 @@ nodesHTML+=`
 
 <p>${node.hardware}</p>
 
-<button onclick="collect(${i})">Collect</button>
+${unlocked ? `<button onclick="collect(${i})">Collect</button>` : `<p>🔒 Move closer to unlock</p>`}
 
 </div>
 
@@ -160,13 +169,17 @@ let colHTML=""
 
 collection.forEach(node=>{
 
-colHTML+=`<div class="card">
+colHTML+=`
+
+<div class="card">
 
 <h3>${node.name}</h3>
 
 <p>${node.rarity}</p>
 
-</div>`
+</div>
+
+`
 
 })
 
@@ -176,17 +189,84 @@ document.getElementById("collection").innerHTML=colHTML
 
 function collect(i){
 
-collection.push(nodes[i])
+const node=nodes[i]
 
-score=parseInt(score)+nodes[i].points
+if(collection.find(n=>n.name===node.name)){
+
+alert("You already collected this node")
+
+return
+
+}
+
+collection.push(node)
+
+score+=node.points
 
 localStorage.setItem("meshCollection",JSON.stringify(collection))
-
 localStorage.setItem("meshScore",score)
 
 document.getElementById("score").innerText=score
 
 render()
+
+}
+
+function getLocation(){
+
+if(!navigator.geolocation){
+
+alert("GPS not supported")
+
+return
+
+}
+
+navigator.geolocation.getCurrentPosition(checkNodes)
+
+}
+
+function checkNodes(position){
+
+const userLat=position.coords.latitude
+const userLng=position.coords.longitude
+
+nodes.forEach(node=>{
+
+const distance=getDistance(userLat,userLng,node.lat,node.lng)
+
+if(distance<500){
+
+if(!unlockedNodes.includes(node.name)){
+
+unlockedNodes.push(node.name)
+
+}
+
+}
+
+})
+
+render()
+
+}
+
+function getDistance(lat1,lon1,lat2,lon2){
+
+const R=6371000
+
+const dLat=(lat2-lat1)*Math.PI/180
+const dLon=(lon2-lon1)*Math.PI/180
+
+const a=
+Math.sin(dLat/2)*Math.sin(dLat/2)+
+Math.cos(lat1*Math.PI/180)*
+Math.cos(lat2*Math.PI/180)*
+Math.sin(dLon/2)*Math.sin(dLon/2)
+
+const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))
+
+return R*c
 
 }
 
